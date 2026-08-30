@@ -1,0 +1,23 @@
+{
+  "name": "wechat-qimen-divination-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "奇门遁甲拆补排盘与十二类事项、运势、天气、智断的本地模型 + HTTP 接口服务，供微信等客户端调用。",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "tyme4ts": "^1.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.7.0"
+  }
+}
