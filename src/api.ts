@@ -9,6 +9,7 @@ import { EVENTS } from "./engine/constants";
 import { ACTIVITY_META } from "./engine/direction";
 import { SUBJECT_OPTIONS, displayEvent, subjectPrompt } from "./engine/subject";
 import { SYMBOL_LIB } from "./engine/symbols";
+import { describeWeather } from "./engine/weather-detail";
 import { loadDistrictWeights } from "./engine/district-model";
 import {
   packChart,
@@ -25,7 +26,7 @@ import {
 } from "./kernel";
 
 export type { QueryBody, AppConfig, LlmConfig };
-export { EVENTS, ACTIVITY_META, SUBJECT_OPTIONS, SYMBOL_LIB, displayEvent, digitRootToJu };
+export { EVENTS, ACTIVITY_META, SUBJECT_OPTIONS, SYMBOL_LIB, displayEvent, digitRootToJu, describeWeather };
 
 function withChart(body: QueryBody = {}) {
   const r = resolveQuery(body);

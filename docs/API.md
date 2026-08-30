@@ -235,6 +235,22 @@ Authorization: Bearer <serviceToken>
 
 - `district`：该区县独立逻辑回归（全国约 3143 区各一套 \\(w,b\\)）
 - `climateBand`：气候带模型（回退/对照）
+- `sketch`：按奇门要素写出的天气细述（与 `district.detail` 相同）
+
+`district` / `climateBand` 在原有 `cls`（晴/阴/雨）、`score`、`rainProb` 之外，增加 `detail`：
+
+| 字段 | 含义 |
+|---|---|
+| `detail.headline` | 总象一句话，如「多云转雨，间有雷声，偏热」 |
+| `detail.sky` | 天空状况 |
+| `detail.kan` | 坎宫用神：神、星、门、天盘地盘干、是否空亡 |
+| `detail.from` | 雨/风/雷/晴/雾从哪一宫来（玄武、白虎、腾蛇、九天、九地所落） |
+| `detail.aspects` | 雨势、晴势、风力、雷电、雾露、暑热、变天，各有强弱与白话 |
+| `detail.elements` | 盘上神、星、门、干、格局如何应天 |
+| `detail.narrative` | 三段白话总述 |
+| `detail.advice` | 宜忌（备伞、避雷、防风等） |
+
+函数接口：`qimen.weather(q)`，返回里同样有 `weather.sketch`。
 
 ### `POST /v1/fortune`
 

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractScoreFeatures, factorBreakdown, rainLevel, scoreToPercent, SCORE_SCALE } from "./unified";
 import { ancientWeather, WEATHER_CLASSES, type WeatherForecast } from "./weather-model";
+import { describeWeather } from "./weather-detail";
 import type { QimenChart } from "./types";
 import { regionForProvince, regionMeta } from "./regions";
 
@@ -143,7 +144,14 @@ export function forecastDistrictWeather(
   const hit = resolveCell(pack, loc.provinceCode, loc.cityCode, loc.districtCode);
   const climate = regionMeta(regionForProvince(loc.provinceCode));
   if (!hit) {
-    const x = extractScoreFeatures(chart, doy);
+    const ancient = ancientWeather(chart);
+    const detail = describeWeather(chart, {
+      cls: "阴",
+      score: 0,
+      rainProb: 50,
+      level: "中平",
+      place: `${loc.province}${loc.city}${loc.district}`,
+    });
     return {
       cls: "阴",
       score: 0,
@@ -152,9 +160,10 @@ export function forecastDistrictWeather(
       factors: [],
       probs: WEATHER_CLASSES.map((name) => ({ name, p: 33 })),
       rainProb: 50,
-      ancient: ancientWeather(chart),
-      reading: `${loc.province}${loc.city}${loc.district} 暂无区县权重，回退气候带「${climate.place}」。`,
+      ancient,
+      reading: `${loc.province}${loc.city}${loc.district} 暂无区县权重，回退气候带「${climate.place}」。${detail.headline}。`,
       sourceNote: `未匹配区县模型 · 气候带 ${climate.place}`,
+      detail,
     };
   }
   const cell = hit.cell;
@@ -171,12 +180,8 @@ export function forecastDistrictWeather(
   const level = rainLevel(score);
   const place = `${loc.province}${loc.city}${loc.district}`;
   const grid = `${cell.lat.toFixed(4)}°N ${cell.lng.toFixed(4)}°E`;
-  const reading =
-    cls === "雨"
-      ? `坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），${place}估有雨 ${rainProb}%。`
-      : cls === "晴"
-        ? `坎宫用神分值 ${score}（${level}），${place}估有雨 ${rainProb}%。`
-        : `分值 ${score} 近中平（${level}），${place}有雨 ${rainProb}%，宜持中。`;
+  const detail = describeWeather(chart, { cls, score, rainProb, level, place });
+  const reading = `${detail.headline}。坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），${place}估有雨 ${rainProb}%。`;
   return {
     cls,
     score,
@@ -188,6 +193,7 @@ export function forecastDistrictWeather(
     ancient,
     reading,
     sourceNote: `${place} · ${hit.how}独立模型 · 中心 ${grid} · ${pack.start}–${pack.end} · 训练至 ${pack.trainUntil} · 有雨检验 ${pct(cell.metrics.rainAccTest)} · 旬检验 ${pct(cell.metrics.xunAccTest)}。S=22×logit。NOAA CPC 0.5° 双线性插值到本区中心后单独拟合，不与邻区共享 w、b。`,
+    detail,
   };
 }
 

@@ -1,4 +1,5 @@
 import { buildChart } from "./chart";
+import { describeWeather, type WeatherSketch } from "./weather-detail";
 import type { PalaceId, QimenChart } from "./types";
 import weatherJson from "./ouhai-weather.json";
 import regionsJson from "./weather-regions.json";
@@ -384,6 +385,7 @@ export type WeatherForecast = {
   ancient: ReturnType<typeof ancientWeather>;
   reading: string;
   sourceNote: string;
+  detail: WeatherSketch;
 };
 
 type RegionWeight = {
@@ -456,12 +458,15 @@ export function forecastWeather(
   const p3 = softmax(p3raw);
   const meta = regionMeta(regionId);
   const level = rainLevel(score);
-  const reading =
-    cls === "雨"
-      ? `坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），${meta.place}模型估有雨 ${rainProb}%。玄武、休门、阴遁若加分为正，宜备雨具。`
-      : cls === "晴"
-        ? `坎宫用神分值 ${score}（${level}），${meta.place}模型估有雨 ${rainProb}%。九天、景门、阳遁偏旺则宜出行晒物。`
-        : `分值 ${score} 近中平（${level}），有雨 ${rainProb}%，宜持中。`;
+  const detail = describeWeather(chart, {
+    cls,
+    score,
+    rainProb,
+    level,
+    place: meta.place,
+    month,
+  });
+  const reading = `${detail.headline}。${detail.advice}`;
   return {
     cls,
     score,
@@ -473,6 +478,7 @@ export function forecastWeather(
     ancient,
     reading,
     sourceNote: `${meta.place} 独立逻辑回归 · ${TRAINED_WEIGHTS.start}–${TRAINED_WEIGHTS.end} · 训练至 ${TRAINED_WEIGHTS.trainUntil} · 旬检验 ${pct(pack.metrics.xunAccTest)}。S=22×logit，与事项同一百分比。`,
+    detail,
   };
 }
 

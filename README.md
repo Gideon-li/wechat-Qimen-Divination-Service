@@ -59,7 +59,7 @@ npm run example
 | `qimen.directions(q)` | 八门方位 | 否 |
 | `qimen.fortune(q)` | 年 / 月 / 日运 | 否 |
 | `qimen.natal(q)` | 本命年 | 否 |
-| `qimen.weather(q)` | 区县天气 | 否 |
+| `qimen.weather(q)` | 区县天气（含奇门要素细述 `sketch`） | 否 |
 | `qimen.lots("168")` | 三位数求局 | 否 |
 | `qimen.scan(q)` | 全盘一次返回 | 否 |
 | `qimen.consultCompose(q)` | 智断联想 | 是 |

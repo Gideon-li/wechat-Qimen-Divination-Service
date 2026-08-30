@@ -240,6 +240,7 @@ export async function packWeather(r: Resolved) {
   return {
     district,
     climateBand: climate,
+    sketch: district.detail,
     model: {
       nDistricts: pack.nDistricts,
       start: pack.start,
