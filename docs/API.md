@@ -219,6 +219,8 @@ Authorization: Bearer <serviceToken>
 
 十二类事项，按分值排序。每条含 `score`、`probability`（\\(P=\\sigma(S/22)\\)）、`level`、神星门三段、`reading`、`associations`、权重拆解。
 
+神星门基础分与**该地天气模型同一套区县系数**：用该区 `scoreModel.w` 的 \\(|\\beta|\\) 作信度，乘刘伯温吉凶符号。换区即换模型。`data.model` 标明用的哪一套（`shared: weather+events`，`place`，`how`）。不把「有雨」的正负号抄到求财/事业。
+
 ### `POST /v1/event`
 
 单事项。用 `eventId` 指定。

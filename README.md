@@ -53,7 +53,7 @@ npm run example
 | 函数 | 说明 | 要大模型？ |
 |---|---|---|
 | `qimen.chart(q)` | 只排盘 | 否 |
-| `qimen.events(q)` | 十二类事项 | 否 |
+| `qimen.events(q)` | 十二类事项（与该地区县天气同一套模型） | 否 |
 | `qimen.event(q)` | 单事项（`eventId`） | 否 |
 | `qimen.people(q)` | 人事六亲 | 否 |
 | `qimen.directions(q)` | 八门方位 | 否 |

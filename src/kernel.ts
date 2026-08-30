@@ -9,7 +9,7 @@ import { buildFortunePack } from "./engine/fortune";
 import { displayEvent, isPlaceSubject, subjectName, subjectPrompt, subjectScope, type SubjectKind } from "./engine/subject";
 import { EVENTS } from "./engine/constants";
 import { extractSymbolPack } from "./engine/extract";
-import { forecastDistrictWeather, loadDistrictWeights } from "./engine/district-model";
+import { forecastDistrictWeather, loadDistrictWeights, eventBasesForLocation } from "./engine/district-model";
 import { forecastWeather } from "./engine/weather-model";
 import { regionForProvince } from "./engine/regions";
 import type { EventId, Gender, QimenChart } from "./engine/types";
@@ -153,6 +153,16 @@ export function resolveQuery(body: QueryBody = {}): Resolved {
   };
 }
 
+export async function attachDistrictBases(r: Resolved): Promise<Resolved> {
+  const pack = await loadDistrictWeights();
+  const bases = eventBasesForLocation(pack, r.loc);
+  return { ...r, opts: { ...r.opts, bases } };
+}
+
+export async function readyQuery(body: QueryBody = {}) {
+  return attachDistrictBases(resolveQuery(body));
+}
+
 function doyOf(c: CivilTime) {
   return Math.floor((Date.UTC(c.year, c.month - 1, c.day) - Date.UTC(c.year, 0, 1)) / 86400000) + 1;
 }
@@ -200,6 +210,9 @@ export function packChart(r: Resolved) {
     location: r.loc,
     civil: r.civil,
     chart: slimChart(r.chart),
+    model: r.opts.bases
+      ? { shared: "weather+events", how: r.opts.bases.how, place: r.opts.bases.place }
+      : { shared: "national-fallback", how: "全国平均", place: "全国" },
   };
 }
 
@@ -212,7 +225,7 @@ export function packEvent(r: Resolved, eventId?: EventId) {
 }
 
 export function packPeople(r: Resolved) {
-  return peopleRelations(r.chart, r.gender);
+  return peopleRelations(r.chart, r.gender, r.opts.bases);
 }
 
 export function packDirections(r: Resolved) {

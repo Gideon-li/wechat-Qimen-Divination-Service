@@ -18,7 +18,7 @@ import {
   packNatal,
   packPeople,
   packWeather,
-  resolveQuery,
+  readyQuery,
   type QueryBody,
 } from "./kernel";
 import { subjectPrompt } from "./engine/subject";
@@ -110,7 +110,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
     const pack = await loadDistrictWeights();
     const cfg = await loadConfig();
     return ok({
-      engine: "chao-bu qimen + additive S, P=σ(S/22), SCORE_SCALE=22",
+      engine: "chao-bu qimen + additive S, P=σ(S/22), SCORE_SCALE=22。事项/运势/人事与天气共用该地天气模型 |β|。",
       local: {
         districtWeather: {
           file: "models/qimen-district-weights-2020-2026.json",
@@ -161,7 +161,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
     return ok({ code: r.source, ju: r.ju, steps: r.steps });
   }
 
-  const r = resolveQuery(body);
+  const r = await readyQuery(body);
 
   if (method === "POST" && p === "/v1/chart") {
     return ok(packChart(r));

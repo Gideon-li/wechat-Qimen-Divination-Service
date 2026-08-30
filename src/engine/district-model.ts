@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { extractScoreFeatures, factorBreakdown, rainLevel, scoreToPercent, SCORE_SCALE } from "./unified";
 import { ancientWeather, WEATHER_CLASSES, type WeatherForecast } from "./weather-model";
 import { describeWeather } from "./weather-detail";
+import { basesFromDistrictWeights, NATIONAL_BASES, type EventBases } from "./calibrated";
 import type { QimenChart } from "./types";
 import { regionForProvince, regionMeta } from "./regions";
 
@@ -195,6 +196,25 @@ export function forecastDistrictWeather(
     sourceNote: `${place} · ${hit.how}独立模型 · 中心 ${grid} · ${pack.start}–${pack.end} · 训练至 ${pack.trainUntil} · 有雨检验 ${pct(cell.metrics.rainAccTest)} · 旬检验 ${pct(cell.metrics.xunAccTest)}。S=22×logit。NOAA CPC 0.5° 双线性插值到本区中心后单独拟合，不与邻区共享 w、b。`,
     detail,
   };
+}
+
+export function eventBasesForLocation(
+  pack: DistrictPack,
+  loc: {
+    province: string;
+    city: string;
+    district: string;
+    provinceCode: string;
+    cityCode: string;
+    districtCode: string;
+  },
+): EventBases {
+  const hit = resolveCell(pack, loc.provinceCode, loc.cityCode, loc.districtCode);
+  if (!hit) return { ...NATIONAL_BASES, place: `${loc.province}${loc.city}${loc.district}`, how: "全国平均（未匹配区县）" };
+  return basesFromDistrictWeights(hit.cell.scoreModel.w, {
+    how: hit.how,
+    place: `${loc.province}${loc.city}${loc.district}`,
+  });
 }
 
 export function provinceMetrics(pack: DistrictPack) {

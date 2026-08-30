@@ -7,7 +7,7 @@ import {
   STAR_ELEMENT,
   STEM_BASE,
 } from "./constants";
-import { GATE_BASE, GOD_BASE, STAR_BASE } from "./calibrated";
+import { pickBases, type EventBases } from "./calibrated";
 import { detectClassicPatterns, GATE_CLASSIC, STAR_SONG } from "./classic";
 import {
   addCivilDays,
@@ -119,6 +119,7 @@ function phaseText(phase: "start" | "process" | "end", palace: Palace): string {
 function scoreSelf(
   chart: QimenChart,
   extra: ScoreFactor[],
+  bases?: EventBases,
 ): {
   score: number;
   probability: number;
@@ -132,8 +133,9 @@ function scoreSelf(
   const palaceId = chart.meta.zhiFuPalace;
   const palace = chart.palaces[palaceId];
   const factors: ScoreFactor[] = [];
+  const table = pickBases({ bases });
 
-  const godW = palace.god ? (GOD_BASE[palace.god] ?? 0) : 0;
+  const godW = palace.god ? (table.god[palace.god] ?? 0) : 0;
   factors.push({
     key: "god",
     label: "神 · 开始",
@@ -141,7 +143,7 @@ function scoreSelf(
     weight: godW,
     phase: "start",
   });
-  const starW = STAR_BASE[palace.star] ?? 0;
+  const starW = table.star[palace.star] ?? 0;
   factors.push({
     key: "star",
     label: "星 · 过程",
@@ -149,7 +151,7 @@ function scoreSelf(
     weight: starW,
     phase: "process",
   });
-  const gateW = palace.gate ? (GATE_BASE[palace.gate] ?? 0) : -4;
+  const gateW = palace.gate ? (table.gate[palace.gate] ?? 0) : -4;
   factors.push({
     key: "gate",
     label: "门 · 结束",
@@ -216,9 +218,9 @@ function scoreSelf(
   };
 }
 
-function quickScore(civil: CivilTime): { score: number; probability: number; level: LuckLevel } {
+function quickScore(civil: CivilTime, bases?: EventBases): { score: number; probability: number; level: LuckLevel } {
   const chart = buildChart(civil);
-  const s = scoreSelf(chart, []);
+  const s = scoreSelf(chart, [], bases);
   return { score: s.score, probability: s.probability, level: s.level };
 }
 
@@ -380,7 +382,7 @@ function finish(
   slices: FortuneSlice[],
 ): PeriodFortune {
   const { extra, marks } = periodExtras(chart, kind, opts);
-  const self = scoreSelf(chart, extra);
+  const self = scoreSelf(chart, extra, opts?.bases);
   const events = scoreAllEvents(chart, opts);
   const reading = composePeriodReading(
     kind,
@@ -429,7 +431,7 @@ export function buildFortunePack(civil: CivilTime, opts?: ScoreOpts): FortunePac
 
   const monthTerms = yearMonthTerms(yb.ganzhiYear);
   const yearSlices: FortuneSlice[] = monthTerms.map((t) => {
-    const q = quickScore(t.at);
+    const q = quickScore(t.at, opts?.bases);
     return {
       id: t.branch,
       name: `${t.branch}月·${t.term}`,
@@ -445,7 +447,7 @@ export function buildFortunePack(civil: CivilTime, opts?: ScoreOpts): FortunePac
     { id: "中元", name: "中旬·中元", at: addCivilDays(mb.at, 5) },
     { id: "下元", name: "下旬·下元", at: addCivilDays(mb.at, 10) },
   ].map((s) => {
-    const q = quickScore(s.at);
+    const q = quickScore(s.at, opts?.bases);
     return {
       id: s.id,
       name: s.name,
@@ -458,7 +460,7 @@ export function buildFortunePack(civil: CivilTime, opts?: ScoreOpts): FortunePac
 
   const zhiNow = hourToZhiIndex(civil.hour);
   const daySlices: FortuneSlice[] = HOUR_MIDPOINTS.map((h, i) => {
-    const q = quickScore(hourCivil(civil, h));
+    const q = quickScore(hourCivil(civil, h), opts?.bases);
     return {
       id: HOUR_NAMES[i]!,
       name: HOUR_NAMES[i]!,

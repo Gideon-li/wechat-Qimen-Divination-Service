@@ -21,6 +21,7 @@ import {
   packNatal,
   packPeople,
   packWeather,
+  readyQuery,
   resolveQuery,
   type QueryBody,
 } from "./kernel";
@@ -28,8 +29,8 @@ import {
 export type { QueryBody, AppConfig, LlmConfig };
 export { EVENTS, ACTIVITY_META, SUBJECT_OPTIONS, SYMBOL_LIB, displayEvent, digitRootToJu, describeWeather };
 
-function withChart(body: QueryBody = {}) {
-  const r = resolveQuery(body);
+async function withChart(body: QueryBody = {}) {
+  const r = await readyQuery(body);
   return { r, base: packChart(r) };
 }
 
@@ -47,45 +48,45 @@ export function chart(body: QueryBody = {}) {
   return packChart(resolveQuery(body));
 }
 
-/** 十二类事项 */
-export function events(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+/** 十二类事项（与该地天气同一套区县模型） */
+export async function events(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, events: packEvents(r) };
 }
 
 /** 单事项 */
-export function event(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+export async function event(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, event: packEvent(r) };
 }
 
 /** 人事六亲 */
-export function people(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+export async function people(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, people: packPeople(r), zhiFu: r.chart.palaces[r.chart.meta.zhiFuPalace] };
 }
 
 /** 八门方位 */
-export function directions(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+export async function directions(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, directions: packDirections(r) };
 }
 
 /** 年 / 月 / 日运 */
-export function fortune(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+export async function fortune(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, fortune: packFortune(r) };
 }
 
 /** 本命年（需 birthYear） */
-export function natal(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+export async function natal(body: QueryBody = {}) {
+  const { r, base } = await withChart(body);
   return { ...base, ...packNatal(r) };
 }
 
 /** 区县天气（本地权重） */
 export async function weather(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+  const { r, base } = await withChart(body);
   return { ...base, weather: await packWeather(r) };
 }
 
@@ -97,7 +98,7 @@ export function lots(code: string) {
 
 /** 全盘：盘 + 事项 + 人事 + 方位 + 运势 + 天气 + 本命 */
 export async function scan(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+  const { r, base } = await withChart(body);
   return {
     ...base,
     events: packEvents(r),
@@ -114,7 +115,7 @@ export const divination = scan;
 
 /** 智断：组一件具体的事（需本地已配置大模型 Key） */
 export async function consultCompose(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+  const { r, base } = await withChart(body);
   const extracted = packExtract(r);
   const score = extracted.score;
   const result = await composeAssociation({
@@ -135,7 +136,7 @@ export async function consultCompose(body: QueryBody = {}) {
 
 /** 智断：追问盘面（含白话吉凶第三段） */
 export async function consultAsk(body: QueryBody = {}) {
-  const { r, base } = withChart(body);
+  const { r, base } = await withChart(body);
   const extracted = packExtract(r);
   const score = extracted.score;
   const palace = r.chart.palaces[score.palaceId];

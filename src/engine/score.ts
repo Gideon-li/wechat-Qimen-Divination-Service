@@ -20,7 +20,7 @@ import {
   BRANCH_SIX_HE,
   SCORE_SCALE,
 } from "./constants";
-import { GATE_BASE, GOD_BASE, STAR_BASE } from "./calibrated";
+import { pickBases, type EventBases } from "./calibrated";
 import { changshengOf, wuxingRelation } from "./calendar";
 import { detectClassicPatterns } from "./classic";
 import { enrichEventScore } from "./reading";
@@ -254,6 +254,7 @@ export type ScoreOpts = {
   birthYear?: number | null;
   subjectKind?: SubjectKind;
   subjectLabel?: string;
+  bases?: EventBases;
 };
 
 export function scoreEvent(
@@ -268,8 +269,9 @@ export function scoreEvent(
       : findPalaceBy(chart, def.yongShen, def.target);
   const palace = chart.palaces[palaceId];
   const factors: ScoreFactor[] = [];
+  const bases = pickBases(opts);
 
-  const godW = (palace.god ? (GOD_BASE[palace.god] ?? 0) : 0) + (palace.god ? (def.godBias[palace.god] ?? 0) : 0);
+  const godW = (palace.god ? (bases.god[palace.god] ?? 0) : 0) + (palace.god ? (def.godBias[palace.god] ?? 0) : 0);
   factors.push({
     key: "god",
     label: "神 · 开始",
@@ -278,7 +280,7 @@ export function scoreEvent(
     phase: "start",
   });
 
-  const starW = (STAR_BASE[palace.star] ?? 0) + (def.starBias[palace.star] ?? 0);
+  const starW = (bases.star[palace.star] ?? 0) + (def.starBias[palace.star] ?? 0);
   factors.push({
     key: "star",
     label: "星 · 过程",
@@ -288,7 +290,7 @@ export function scoreEvent(
   });
 
   const gateW = palace.gate
-    ? (GATE_BASE[palace.gate] ?? 0) + (def.gateBias[palace.gate] ?? 0)
+    ? (bases.gate[palace.gate] ?? 0) + (def.gateBias[palace.gate] ?? 0)
     : -4;
   factors.push({
     key: "gate",
@@ -514,7 +516,8 @@ const KIND_LABEL: Record<RelationKind, string> = {
   subordinate: "下属",
 };
 
-export function peopleRelations(chart: QimenChart, gender: Gender): PeopleLink[] {
+export function peopleRelations(chart: QimenChart, gender: Gender, bases?: EventBases): PeopleLink[] {
+  const table = pickBases({ bases });
   const self = chart.palaces[chart.meta.zhiFuPalace];
   const selfEl = self.element;
   const links: PeopleLink[] = [];
@@ -539,9 +542,9 @@ export function peopleRelations(chart: QimenChart, gender: Gender): PeopleLink[]
     if (p.bagua === "巽") kinds.push("teacher");
     if (p.bagua === "乾") kinds.push("boss", "parent");
 
-    const gateW = p.gate ? (GATE_BASE[p.gate] ?? 0) : 0;
-    const starW = STAR_BASE[p.star] ?? 0;
-    const godW = p.god ? (GOD_BASE[p.god] ?? 0) : 0;
+    const gateW = p.gate ? (table.gate[p.gate] ?? 0) : 0;
+    const starW = table.star[p.star] ?? 0;
+    const godW = p.god ? (table.god[p.god] ?? 0) : 0;
     const extra =
       (p.isKong ? -14 : 0) + (p.ruMu ? -8 : 0) + (p.menPo ? -6 : 0) + (p.fuYin ? -4 : 0);
     const he = BRANCH_SIX_HE[self.branch] === p.branch ? 10 : 0;
