@@ -1,131 +1,131 @@
-# 奇门遁甲接口服务
+# 奇门遁甲本地模型与接口
 
-给微信小程序 / 公众号 / 其它后端调用的 **无页面** 奇门遁甲服务。
+**GitHub 只存源码和模型，不提供在线调用。**  
+其它项目把本仓库下载到自己的机器，在本地配置、在本地调用。
 
-本仓库把「奇门权衡」网站的全部测算能力收成 HTTP JSON 接口，并把底层模型一并打包：
+仓库里有两层接口，任选：
 
-- **本地模型（无需网、无需 Key）**：拆补时盘、求签定局、十二类事项权重、人事六亲、八门方位、年/月/日运、本命年、全国区县天气逻辑回归（2020–2026）。
-- **大模型接口（可自配）**：智断联想、追问盘面。兼容 OpenAI `chat/completions`（通义千问 Token Plan、DashScope、Ollama、vLLM）。Key、地址、模型名均可运行时用接口写入。
+1. **函数接口（推荐给其它 Node 项目）** — `import { qimen } from "..."` 直接算盘，不必开服务。
+2. **本机 HTTP 接口（可选）** — 若微信小程序、别的语言要走 JSON，再在本机 `npm start`。
 
-详细字段与示例见 [docs/API.md](docs/API.md)。
+底层排盘、十二类事项、天气权重都是本地模型，不算大模型额度。智断才需要你自己在本机填 Key。
 
-## 一次启动
+字段说明见 [docs/API.md](docs/API.md)。
+
+## 下载到本地
 
 ```bash
 git clone https://github.com/Gideon-li/wechat-Qimen-Divination-Service.git
 cd wechat-Qimen-Divination-Service
 npm install
-cp .env.example .env   # 可先空着 Key，稍后用接口配置
+```
+
+或在你的项目里：
+
+```bash
+git clone https://github.com/Gideon-li/wechat-Qimen-Divination-Service.git vendor/qimen
+cd vendor/qimen && npm install
+```
+
+## 函数接口（给其它项目直接引用）
+
+```js
+import { qimen } from "./vendor/qimen/src/api.ts";
+
+const r = await qimen.scan({
+  civil: { year: 2026, month: 8, day: 30, hour: 10, minute: 0 },
+  subjectKind: "person",
+  personName: "张三",
+  gender: "male",
+  location: { province: "浙江省", city: "温州市", district: "瓯海区" },
+  eventId: "wealth",
+});
+
+console.log(r.chart.ju.label, r.focus.name, r.focus.level);
+```
+
+可运行自带示例：
+
+```bash
+npm run example
+```
+
+| 函数 | 说明 | 要大模型？ |
+|---|---|---|
+| `qimen.chart(q)` | 只排盘 | 否 |
+| `qimen.events(q)` | 十二类事项 | 否 |
+| `qimen.event(q)` | 单事项（`eventId`） | 否 |
+| `qimen.people(q)` | 人事六亲 | 否 |
+| `qimen.directions(q)` | 八门方位 | 否 |
+| `qimen.fortune(q)` | 年 / 月 / 日运 | 否 |
+| `qimen.natal(q)` | 本命年 | 否 |
+| `qimen.weather(q)` | 区县天气 | 否 |
+| `qimen.lots("168")` | 三位数求局 | 否 |
+| `qimen.scan(q)` | 全盘一次返回 | 否 |
+| `qimen.consultCompose(q)` | 智断联想 | 是 |
+| `qimen.consultAsk(q)` | 追问盘面 | 是 |
+| `qimen.configure({ llm })` | 本地写入 Key | — |
+| `qimen.getConfig()` | 读配置（Key 已掩码） | — |
+
+`q` 的字段与 HTTP 请求体相同，见 [docs/API.md](docs/API.md)。
+
+事业 `career` 与学业 `study` 是两类事项，分开调用。
+
+## 本地配置 Key（只存在你这台机器）
+
+智断才需要。排盘、事项、天气不用。
+
+**方式 A：项目根目录 `.env`（从 `.env.example` 复制，不要提交）**
+
+```
+QIMEN_LLM_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+QIMEN_LLM_MODEL=qwen3.8-flash
+QIMEN_LLM_API_KEY=sk-你的密钥
+```
+
+本机 Ollama：
+
+```
+QIMEN_LLM_BASE_URL=http://127.0.0.1:11434/v1
+QIMEN_LLM_MODEL=qwen2.5:7b
+QIMEN_LLM_API_KEY=ollama
+```
+
+**方式 B：代码里配**
+
+```js
+await qimen.configure({
+  llm: {
+    enabled: true,
+    baseUrl: "http://127.0.0.1:11434/v1",
+    model: "qwen2.5:7b",
+    apiKey: "ollama",
+  },
+});
+```
+
+写入 `data/config.json`，已在 `.gitignore`，不会进 GitHub。
+
+## 可选：本机 HTTP
+
+只有当别的进程要用 JSON 时才开：
+
+```bash
 npm start
 ```
 
-默认监听 `0.0.0.0:8787`。健康检查：
+然后本机请求 `/v1/scan`、`/v1/consult/ask` 等。路径表见 [docs/API.md](docs/API.md)。这是你自己机器上的服务，不是 GitHub 上的服务。
 
-```bash
-curl -s http://127.0.0.1:8787/health
-```
-
-排一盘（本地模型，不必配 Key）：
-
-```bash
-curl -s -X POST http://127.0.0.1:8787/v1/scan \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "civil": { "year": 2026, "month": 8, "day": 30, "hour": 10, "minute": 0 },
-    "subjectKind": "person",
-    "personName": "张三",
-    "gender": "male",
-    "location": { "province": "浙江省", "city": "温州市", "district": "瓯海区" }
-  }'
-```
-
-## 自行配置模型与 Key
-
-**方式 A：环境变量**（见 `.env.example`）
-
-**方式 B：接口（推荐给微信后台热更新）**
-
-```bash
-curl -s -X PUT http://127.0.0.1:8787/v1/config \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "serviceToken": "请改成你的访问令牌",
-    "llm": {
-      "enabled": true,
-      "baseUrl": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
-      "model": "qwen3.8-flash",
-      "apiKey": "sk-你的密钥"
-    }
-  }'
-```
-
-本地 Ollama：
-
-```json
-{
-  "llm": {
-    "enabled": true,
-    "baseUrl": "http://127.0.0.1:11434/v1",
-    "model": "qwen2.5:7b",
-    "apiKey": "ollama"
-  }
-}
-```
-
-写入后落在 `data/config.json`（已 gitignore）。`GET /v1/config` 只回掩码，不回明文 Key。
-
-配置了 `serviceToken` 之后，除 `GET /health` 外均需：
-
-```
-Authorization: Bearer 你的令牌
-```
-
-测大模型连通：`POST /v1/config/test-llm`。
-
-## 接口一览
-
-| 方法 | 路径 | 是否要大模型 | 说明 |
-|---|---|---|---|
-| GET | `/health` | 否 | 探活 |
-| GET | `/v1` | 否 | 目录 |
-| GET | `/v1/catalog` | 否 | 事项/对象/方位活动字典 |
-| GET | `/v1/locations` | 否 | 中国省市区 |
-| GET | `/v1/symbols` | 否 | 奇门象征库 |
-| GET | `/v1/models` | 否 | 已打包模型元数据 |
-| GET/PUT | `/v1/config` | 否 | 读/写 Key 与模型地址 |
-| POST | `/v1/config/test-llm` | 是 | 测大模型 |
-| POST | `/v1/chart` | 否 | 只排盘 |
-| POST | `/v1/scan` 或 `/v1/divination` | 否 | 全盘：盘+事项+人事+方位+运势+天气 |
-| POST | `/v1/events` | 否 | 十二类事项 |
-| POST | `/v1/event` | 否 | 单事项 |
-| POST | `/v1/people` | 否 | 人事六亲 |
-| POST | `/v1/directions` | 否 | 八门方位 |
-| POST | `/v1/weather` | 否 | 区县天气（本地权重） |
-| POST | `/v1/fortune` | 否 | 年/月/日运 |
-| POST | `/v1/natal` | 否 | 本命年 |
-| POST | `/v1/lots` | 否 | 三位数求局 |
-| POST | `/v1/consult/compose` | 是 | 智断联想一件事 |
-| POST | `/v1/consult/ask` | 是 | 追问盘面（含白话吉凶第三段） |
-
-共同请求体字段见 [docs/API.md](docs/API.md)。
-
-## 底层模型（随仓库）
+## 打包进去的本地模型
 
 | 文件 | 用途 |
 |---|---|
-| `models/qimen-district-weights-2020-2026.json` | 全国每个区县一套降水逻辑回归权重（约 5.3MB） |
-| `src/engine/weather-weights.json` | 气候带天气模型 |
+| `models/qimen-district-weights-2020-2026.json` | 全国每个区县一套降水逻辑回归 |
+| `src/engine/weather-weights.json` | 气候带天气 |
 | `src/engine/event-calibration.json` | 十二类事项门星神校准 |
 | `src/engine/china-pca.json` | 省市区划 |
-| `src/engine/symbols.ts` | 75 条符号象征库 |
+| `src/engine/symbols.ts` | 符号象征库 |
 
-事项与天气同一套分值：\\(S\\) 加权后 \\(P=\\sigma(S/22)\\)。排盘为拆补时盘（`tyme4ts`）。
-
-## 微信侧调用提示
-
-1. 把本服务部署到你的服务器 / 云函数（不要把 Key 写进小程序）。
-2. 小程序 `request` 合法域名填你的 HTTPS 域名。
-3. 推荐只暴露 `POST /v1/divination` 与 `POST /v1/consult/ask`，服务端用 `serviceToken` 鉴权。
-4. 智断两次调用都走你的服务器，由服务器持有大模型 Key。
+事项与天气同一套分值：加权得 S，再 \(P=\sigma(S/22)\)。排盘为拆补时盘。
 
 供学习参考，并非定论。

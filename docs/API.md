@@ -1,18 +1,28 @@
 # 接口说明
 
-基址默认 `http://127.0.0.1:8787`。全部 JSON，UTF-8。
+本仓库从 GitHub **下载到本地后使用**。GitHub 不托管在线服务，也不能从仓库上直接调接口。
 
-成功：
+有两种用法：
+
+1. **函数接口**：其它 Node 项目 `import { qimen } from "<本仓库>/src/api.ts"`，见下文「函数」与仓库根目录 `examples/local-call.mjs`。
+2. **本机 HTTP（可选）**：仅在你自己的机器上 `npm start` 后访问。默认基址 `http://127.0.0.1:8787`。
+
+函数参数与 HTTP JSON 字段相同。下面先列共同字段，再列 HTTP 路径；函数名对照表在文末。
+
+---
+
+HTTP 成功：
 
 ```json
 { "ok": true, "data": { } }
 ```
 
-失败：
+HTTP 失败：
 
 ```json
 { "ok": false, "error": "原因" }
 ```
+
 
 常见 HTTP 状态：200 成功，400 参数，401 缺令牌，404 未知路径，502 大模型失败。
 
@@ -283,41 +293,33 @@ Authorization: Bearer <serviceToken>
 
 ---
 
-## 6. 微信示例
+## 6. 函数对照（其它项目本地 import）
 
 ```js
-const BASE = "https://your-domain.example";
-const TOKEN = "你的 serviceToken";
-
-async function scan(payload) {
-  const res = await wx.request({
-    url: `${BASE}/v1/divination`,
-    method: "POST",
-    header: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${TOKEN}`,
-    },
-    data: payload,
-  });
-  return res.data;
-}
+import { qimen } from "../src/api.ts";
+const r = await qimen.scan({ eventId: "career", personName: "李四", civil: { year: 2026, month: 8, day: 30, hour: 9, minute: 0 } });
 ```
 
-Node 服务端：
+| HTTP | 函数 | 返回 |
+|---|---|---|
+| POST /v1/chart | `qimen.chart(q)` | `{ subject, location, civil, chart }` |
+| POST /v1/events | `qimen.events(q)` | 同上 + `events` |
+| POST /v1/event | `qimen.event(q)` | 同上 + `event` |
+| POST /v1/people | `qimen.people(q)` | 同上 + `people` |
+| POST /v1/directions | `qimen.directions(q)` | 同上 + `directions` |
+| POST /v1/weather | `qimen.weather(q)` | 同上 + `weather` |
+| POST /v1/fortune | `qimen.fortune(q)` | 同上 + `fortune` |
+| POST /v1/natal | `qimen.natal(q)` | 同上 + `natal` |
+| POST /v1/lots | `qimen.lots(code)` | `{ ju, steps }` |
+| POST /v1/scan | `qimen.scan(q)` | 全盘 |
+| POST /v1/consult/compose | `qimen.consultCompose(q)` | `scene` |
+| POST /v1/consult/ask | `qimen.consultAsk(q)` | `text` |
+| PUT /v1/config | `qimen.configure(patch)` | 掩码后的配置 |
+| GET /v1/config | `qimen.getConfig()` | 掩码后的配置 |
 
-```js
-const r = await fetch("http://127.0.0.1:8787/v1/event", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    eventId: "career",
-    subjectKind: "person",
-    personName: "李四",
-    civil: { year: 2026, month: 8, day: 30, hour: 9, minute: 0 },
-  }),
-});
-console.log(await r.json());
-```
+函数直接返回数据对象，不包 `{ ok, data }`。失败时抛错。
+
+若微信等必须走 HTTP，请在**你自己的服务器**上 `npm start`，不要指望 GitHub。
 
 ---
 

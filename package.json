@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "奇门遁甲拆补排盘与十二类事项、运势、天气、智断的本地模型 + HTTP 接口服务，供微信等客户端调用。",
+  "description": "奇门遁甲本地模型与函数/HTTP 接口。从 GitHub 下载后在本地配置使用，不提供在线调用。",
   "engines": {
     "node": ">=22"
+  },
+  "main": "./src/api.ts",
+  "types": "./src/api.ts",
+  "exports": {
+    ".": "./src/api.ts",
+    "./api": "./src/api.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
+    "example": "tsx examples/local-call.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
