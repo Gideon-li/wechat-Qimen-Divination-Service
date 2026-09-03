@@ -10,7 +10,21 @@
 
 底层排盘、十二类事项、天气权重都是本地模型，不算大模型额度。智断才需要你自己在本机填 Key。
 
-字段说明见 [docs/API.md](docs/API.md)。
+- 接口字段、路径、返回体：[docs/API.md](docs/API.md)
+- 四柱×地盘与天气重训：[docs/PILLAR.md](docs/PILLAR.md)
+
+## 这次模型更新（四柱地盘）
+
+预测补上了年支、月支、日支、时支对地盘干支的合冲刑：
+
+- 年 → 长者、领导、主考官
+- 月 → 朋友、亲戚、同僚
+- 日 → 自己
+- 时 → 事情顺逆
+
+日时刑冲克合对当日成事权重最大。这一层已接到十二类事项、运势、人事、本命和天气特征。气候带天气按 52 维重训，旬雨势检验约 +0.83 个百分点；区县旧权重保持 31 维，推理时自动叠共享四柱层。
+
+事业 `career` 与学业 `study` 仍是两类事项，分开调用。
 
 ## 下载到本地
 
@@ -53,7 +67,7 @@ npm run example
 | 函数 | 说明 | 要大模型？ |
 |---|---|---|
 | `qimen.chart(q)` | 只排盘 | 否 |
-| `qimen.events(q)` | 十二类事项（与该地区县天气同一套模型） | 否 |
+| `qimen.events(q)` | 十二类事项（与该地区县天气同一套模型，含四柱地盘） | 否 |
 | `qimen.event(q)` | 单事项（`eventId`） | 否 |
 | `qimen.people(q)` | 人事六亲 | 否 |
 | `qimen.directions(q)` | 八门方位 | 否 |
@@ -63,13 +77,12 @@ npm run example
 | `qimen.lots("168")` | 三位数求局 | 否 |
 | `qimen.scan(q)` | 全盘一次返回 | 否 |
 | `qimen.consultCompose(q)` | 智断联想 | 是 |
-| `qimen.consultAsk(q)` | 追问盘面 | 是 |
+| `qimen.consultAsk(q)` | 追问盘面（第三段为白话卦辞） | 是 |
 | `qimen.configure({ llm })` | 本地写入 Key | — |
 | `qimen.getConfig()` | 读配置（Key 已掩码） | — |
+| `qimen.models()` | 本地权重摘要 | — |
 
 `q` 的字段与 HTTP 请求体相同，见 [docs/API.md](docs/API.md)。
-
-事业 `career` 与学业 `study` 是两类事项，分开调用。
 
 ## 本地配置 Key（只存在你这台机器）
 
@@ -120,9 +133,10 @@ npm start
 
 | 文件 | 用途 |
 |---|---|
-| `models/qimen-district-weights-2020-2026.json` | 全国每个区县一套降水逻辑回归 |
-| `src/engine/weather-weights.json` | 气候带天气 |
+| `models/qimen-district-weights-2020-2026.json` | 全国每个区县一套降水逻辑回归（31 维，推理补四柱层） |
+| `src/engine/weather-weights.json` | 气候带天气（52 维，含四柱） |
 | `src/engine/event-calibration.json` | 十二类事项门星神校准 |
+| `src/engine/pillar-earth.ts` | 年/月/日/时支对地盘 |
 | `src/engine/china-pca.json` | 省市区划 |
 | `src/engine/symbols.ts` | 符号象征库 |
 
