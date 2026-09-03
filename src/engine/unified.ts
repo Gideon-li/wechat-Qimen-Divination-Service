@@ -1,4 +1,5 @@
 import { GATES, GODS_YANG, SCORE_SCALE, STARS } from "./constants";
+import { PILLAR_FEATURE_NAMES, extractPillarFeatures } from "./pillar-earth";
 import type { QimenChart } from "./types";
 
 export { SCORE_SCALE };
@@ -14,6 +15,7 @@ export const SCORE_FEATURE_NAMES = [
   "坎空",
   "年积日sin",
   "年积日cos",
+  ...PILLAR_FEATURE_NAMES,
 ] as const;
 
 export type ScoreVec = number[];
@@ -34,7 +36,24 @@ export function extractScoreFeatures(chart: QimenChart, doy: number): ScoreVec {
   x[b + 3] = kan.isKong ? 1 : 0;
   x[b + 4] = Math.sin((2 * Math.PI * doy) / 365.25);
   x[b + 5] = Math.cos((2 * Math.PI * doy) / 365.25);
+  const pillar = extractPillarFeatures(chart, kan);
+  for (let i = 0; i < pillar.length; i++) x[b + 6 + i] = pillar[i]!;
   return x;
+}
+
+/** 区县旧模型只有前 31 维时，把气候带训出的四柱层加到 logit。 */
+export function logitWithOptionalTail(
+  w: number[],
+  b: number,
+  x: number[],
+  tail?: { offset: number; w: number[] } | null,
+): number {
+  let z = b;
+  for (let j = 0; j < w.length; j++) z += w[j]! * (x[j] ?? 0);
+  if (tail && w.length <= tail.offset) {
+    for (let j = 0; j < tail.w.length; j++) z += tail.w[j]! * (x[tail.offset + j] ?? 0);
+  }
+  return z;
 }
 
 export function sigmoid(z: number): number {
