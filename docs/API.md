@@ -9,6 +9,8 @@
 
 函数参数与 HTTP JSON 字段相同。下面先列共同字段，再列 HTTP 路径；函数名对照表在文末。
 
+模型层说明（四柱×地盘、天气/事项共用、特征维）另见 [PILLAR.md](PILLAR.md)。
+
 ---
 
 HTTP 成功：
@@ -22,7 +24,6 @@ HTTP 失败：
 ```json
 { "ok": false, "error": "原因" }
 ```
-
 
 常见 HTTP 状态：200 成功，400 参数，401 缺令牌，404 未知路径，502 大模型失败。
 
@@ -114,7 +115,7 @@ Authorization: Bearer <serviceToken>
 | negotiate | 谈判签约 | 政务商谈 |
 | find | 寻人寻物 | 寻访失联 |
 
-事业与学业是两类事项，算法不同，不要混用。
+事业 `career` 与学业 `study` 是两类事项，算法不同，不要混用。
 
 `activity`：`commerce` 经商开张，`travel` 远行，`exam` 考试，`marriage` 嫁娶，`healing` 治病，`hide` 避难，`funeral` 丧葬，`lawsuit` 词讼，`hunt` 捕猎，`build` 修造。
 
@@ -150,7 +151,7 @@ Authorization: Bearer <serviceToken>
 
 ### `GET /v1/models`
 
-本地权重文件与大模型配置摘要（Key 已掩码）。
+本地权重文件与大模型配置摘要（Key 已掩码）。`engine` 字段说明事项/运势/人事与天气共用该地天气模型的 `|β|`。
 
 ---
 
@@ -211,23 +212,56 @@ Authorization: Bearer <serviceToken>
 
 这些接口 **只跑本地模型**，不消耗大模型额度。
 
+排盘类成功体都带：
+
+```json
+{
+  "subject": { "kind": "person", "name": "张三", "scope": "…", "gender": "male", "birthYear": 1992 },
+  "location": { "province": "浙江省", "city": "温州市", "district": "瓯海区", "provinceCode": "330000", "cityCode": "330300", "districtCode": "330304" },
+  "civil": { "year": 2026, "month": 9, "day": 3, "hour": 10, "minute": 0 },
+  "chart": { "pillars": { }, "ju": { }, "meta": { }, "palaces": { } },
+  "model": { "shared": "weather+events", "how": "区县", "place": "浙江省温州市瓯海区" }
+}
+```
+
+`data.model` 标明事项与天气共用哪一套区县系数。换区即换模型。不把「有雨」的正负号抄到求财/事业，只用该区 `scoreModel.w` 的 `|β|` 作神星门信度。
+
 ### `POST /v1/chart`
 
 只返回盘面：四柱、局数、九宫（门星神、空亡、值符值使、伏吟反吟等）。
 
 ### `POST /v1/events`
 
-十二类事项，按分值排序。每条含 `score`、`probability`（\\(P=\\sigma(S/22)\\)）、`level`、神星门三段、`reading`、`associations`、权重拆解。
+十二类事项，按分值排序。每条大致含：
 
-神星门基础分与**该地天气模型同一套区县系数**：用该区 `scoreModel.w` 的 \\(|\\beta|\\) 作信度，乘刘伯温吉凶符号。换区即换模型。`data.model` 标明用的哪一套（`shared: weather+events`，`place`，`how`）。不把「有雨」的正负号抄到求财/事业。
+| 字段 | 含义 |
+|---|---|
+| `eventId` / `name` | 事项编号与名称（个人/地方用词不同） |
+| `score` / `probability` / `level` | 加权分 S、P=σ(S/22)（百分数）、吉凶档 |
+| `palaceId` / `god` / `star` / `gate` | 用神宫及神星门 |
+| `reading` | 白话断语，含四柱地盘一句 |
+| `associations` | 象征联想 |
+| `factors` | 权重拆解（神星门、格局、空亡、四柱等） |
+| `ganzhiFlags` | 年/月/日/时支对地盘的合冲刑，以及日时互作 |
+
+四柱对地盘（已写入十二类事项、运势、人事、本命、天气特征）：
+
+| 柱 | 管什么 | 权重倍率 |
+|---|---|---|
+| 年支 | 长者、领导、主考官 | 0.72 |
+| 月支 | 朋友、亲戚、同僚 | 0.88 |
+| 日支 | 自己、当事主体 | 1.20 |
+| 时支 | 事情顺逆、当下气机 | 1.32 |
+
+日时刑冲克合对当日成事权重最大。天气特征在原 31 维神星门/遁吟空/年积日之外，再加 21 维四柱 0/1；气候带已按 52 维重训。区县旧 `w` 只有前 31 维时，推理自动叠上气候带平均的四柱层。详见 [PILLAR.md](PILLAR.md)。
 
 ### `POST /v1/event`
 
-单事项。用 `eventId` 指定。
+单事项。用 `eventId` 指定。字段与上表单条相同。
 
 ### `POST /v1/people`
 
-以值符为「我」的六亲人事。
+以值符为「我」的六亲人事。同样走四柱地盘与区县信度。
 
 ### `POST /v1/directions`
 
@@ -235,8 +269,8 @@ Authorization: Bearer <serviceToken>
 
 ### `POST /v1/weather`
 
-- `district`：该区县独立逻辑回归（全国约 3143 区各一套 \\(w,b\\)）
-- `climateBand`：气候带模型（回退/对照）
+- `district`：该区县独立逻辑回归（全国约 3143 区各一套 w,b）
+- `climateBand`：气候带模型（回退/对照，已含 52 维四柱）
 - `sketch`：按奇门要素写出的天气细述（与 `district.detail` 相同）
 
 `district` / `climateBand` 在原有 `cls`（晴/阴/雨）、`score`、`rainProb` 之外，增加 `detail`：
@@ -246,7 +280,7 @@ Authorization: Bearer <serviceToken>
 | `detail.headline` | 总象一句话，如「多云转雨，间有雷声，偏热」 |
 | `detail.sky` | 天空状况 |
 | `detail.kan` | 坎宫用神：神、星、门、天盘地盘干、是否空亡 |
-| `detail.from` | 雨/风/雷/晴/雾从哪一宫来（玄武、白虎、腾蛇、九天、九地所落） |
+| `detail.from` | 雨/风/雷/晴/雾从哪一宫来（玄武、白虎、腾蛉、九天、九地所落） |
 | `detail.aspects` | 雨势、晴势、风力、雷电、雾露、暑热、变天，各有强弱与白话 |
 | `detail.elements` | 盘上神、星、门、干、格局如何应天 |
 | `detail.narrative` | 三段白话总述 |
@@ -254,9 +288,11 @@ Authorization: Bearer <serviceToken>
 
 函数接口：`qimen.weather(q)`，返回里同样有 `weather.sketch`。
 
+天气与事项 **不是两套互不相干的模型**：同一套区县 `w` 的绝对值给事项当神星门信度；天气分类本身仍用降水符号。气候带四柱层两边共用。
+
 ### `POST /v1/fortune`
 
-年运（立春交节）、月运（当月节气）、日运（午时）。结构含总分、切片、十二类事项。
+年运（立春交节）、月运（当月节气）、日运（午时）。结构含总分、切片、十二类事项。四柱角色写入切片白话（年看尊长主考、月看亲友、日看自己、时看顺逆）。
 
 ### `POST /v1/natal`
 
@@ -304,10 +340,13 @@ Authorization: Bearer <serviceToken>
 二、可能发生的具体事情
 ……
 三、吉凶提示与建议
-……白话解释总断、门星神、宜忌……
+总断吉/凶（分数，顺利倾向约 xx%）。用一两句把卦辞翻成人话：
+门是收局（开/休/生宜动，伤/杜/死宜守），星是过程，神是谁在场。
+空亡、伏吟、反吟、古辞格局也翻成白话。
+最后给宜忌。此段由盘面分值生成，不交给大模型胡编。
 ```
 
-第三段由盘面分值生成，不依赖模型胡编。
+第三段由 `src/engine/luck-plain.ts` 根据 `level`、门星神、空亡、伏吟反吟、格局拼出，接口侧会把模型自己写的「三、」整段替换掉。
 
 ---
 
@@ -320,7 +359,7 @@ const r = await qimen.scan({ eventId: "career", personName: "李四", civil: { y
 
 | HTTP | 函数 | 返回 |
 |---|---|---|
-| POST /v1/chart | `qimen.chart(q)` | `{ subject, location, civil, chart }` |
+| POST /v1/chart | `qimen.chart(q)` | `{ subject, location, civil, chart, model }` |
 | POST /v1/events | `qimen.events(q)` | 同上 + `events` |
 | POST /v1/event | `qimen.event(q)` | 同上 + `event` |
 | POST /v1/people | `qimen.people(q)` | 同上 + `people` |
@@ -334,6 +373,7 @@ const r = await qimen.scan({ eventId: "career", personName: "李四", civil: { y
 | POST /v1/consult/ask | `qimen.consultAsk(q)` | `text` |
 | PUT /v1/config | `qimen.configure(patch)` | 掩码后的配置 |
 | GET /v1/config | `qimen.getConfig()` | 掩码后的配置 |
+| GET /v1/models | `qimen.models()` | 本地权重摘要 |
 
 函数直接返回数据对象，不包 `{ ok, data }`。失败时抛错。
 
@@ -343,7 +383,29 @@ const r = await qimen.scan({ eventId: "career", personName: "李四", civil: { y
 
 ## 7. 分值约定
 
-- 事项、运势、天气有雨倾向均用同一套：加权得 \\(S\\)，\\(P=\\sigma(S/22)\\)，`probability` 为百分数。
+- 事项、运势、天气有雨倾向均用同一套：加权得 S，P=σ(S/22)，`probability` 为百分数。
 - 吉凶档：大吉 ≥42，吉 ≥20，小吉 ≥6，平 (−6,6)，小凶 >−20，凶 >−42，否则大凶。
 - 神应开始、星应过程、门应收局。
+- 四柱合冲刑：合加分、冲刑克减分；日时互作再加一层。
 - 供学习，并非定论。
+
+---
+
+## 8. 特征维与本地文件
+
+天气/事项共用的 `SCORE_FEATURE_NAMES` 共 **52 维**：
+
+1. 神 8 + 门 8 + 星 9
+2. 阴遁、伏吟、反吟、坎空
+3. 年积日 sin / cos
+4. 四柱 21 维：年/月/日/时支合冲刑地盘（12）+ 日时支合冲刑害克（5）+ 日/时干合克地盘（4）
+
+| 文件 | 用途 |
+|---|---|
+| `models/qimen-district-weights-2020-2026.json` | 全国区县降水逻辑回归（前 31 维；推理时补四柱层） |
+| `src/engine/weather-weights.json` | 12 气候带天气（52 维，含四柱） |
+| `src/engine/event-calibration.json` | 十二类事项门星神校准 |
+| `src/engine/pillar-earth.ts` | 四柱×地盘规则 |
+| `src/engine/luck-plain.ts` | 智断第三段白话卦辞 |
+
+本地重训气候带：`npm run train:weather`。
