@@ -280,7 +280,7 @@ Authorization: Bearer <serviceToken>
 | `detail.headline` | 总象一句话，如「多云转雨，间有雷声，偏热」 |
 | `detail.sky` | 天空状况 |
 | `detail.kan` | 坎宫用神：神、星、门、天盘地盘干、是否空亡 |
-| `detail.from` | 雨/风/雷/晴/雾从哪一宫来（玄武、白虎、腾蛉、九天、九地所落） |
+| `detail.from` | 雨/风/雷/晴/雾从哪一宫来（玄武、白虎、腾蛇、九天、九地所落） |
 | `detail.aspects` | 雨势、晴势、风力、雷电、雾露、暑热、变天，各有强弱与白话 |
 | `detail.elements` | 盘上神、星、门、干、格局如何应天 |
 | `detail.narrative` | 三段白话总述 |
