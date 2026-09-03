@@ -17,7 +17,8 @@
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "example": "tsx examples/local-call.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "train:weather": "tsx scripts/train-weather-pillars.ts"
   },
   "dependencies": {
     "tyme4ts": "^1.5.2"
