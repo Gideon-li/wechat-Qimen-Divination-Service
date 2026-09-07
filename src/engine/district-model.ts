@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { extractScoreFeatures, factorBreakdown, rainLevel, scoreToPercent, SCORE_SCALE } from "./unified";
 import { ancientWeather, WEATHER_CLASSES, type WeatherForecast } from "./weather-model";
 import { describeWeather } from "./weather-detail";
+import { classifyByClimate, resolveClimateIntent } from "./climate-intent";
 import { basesFromDistrictWeights, NATIONAL_BASES, type EventBases } from "./calibrated";
 import type { QimenChart } from "./types";
 import { regionForProvince, regionMeta } from "./regions";
@@ -143,7 +144,7 @@ export function forecastDistrictWeather(
   pack: DistrictPack,
 ): WeatherForecast {
   const hit = resolveCell(pack, loc.provinceCode, loc.cityCode, loc.districtCode);
-  const climate = regionMeta(regionForProvince(loc.provinceCode));
+  const climateMeta = regionMeta(regionForProvince(loc.provinceCode));
   if (!hit) {
     const ancient = ancientWeather(chart);
     const detail = describeWeather(chart, {
@@ -162,8 +163,8 @@ export function forecastDistrictWeather(
       probs: WEATHER_CLASSES.map((name) => ({ name, p: 33 })),
       rainProb: 50,
       ancient,
-      reading: `${loc.province}${loc.city}${loc.district} 暂无区县权重，回退气候带「${climate.place}」。${detail.headline}。`,
-      sourceNote: `未匹配区县模型 · 气候带 ${climate.place}`,
+      reading: `${loc.province}${loc.city}${loc.district} 暂无区县权重，回退气候带「${climateMeta.place}」。${detail.headline}。`,
+      sourceNote: `未匹配区县模型 · 气候带 ${climateMeta.place}`,
       detail,
     };
   }
@@ -173,16 +174,30 @@ export function forecastDistrictWeather(
   const score = Math.round(logit * SCORE_SCALE);
   const rainProb = scoreToPercent(score);
   const ancient = ancientWeather(chart);
-  let cls: (typeof WEATHER_CLASSES)[number] = "阴";
-  if (score >= 6) cls = "雨";
-  else if (score <= -6) cls = "晴";
+  const climate = resolveClimateIntent({
+    rainRate: cell.rainRate,
+    rainAccTest: cell.metrics.rainAccTest,
+  });
+  const cls = classifyByClimate(score, climate);
   const p3raw = cell.daily3.w.map((row, c) => row.reduce((s, wj, j) => s + wj * (x[j] ?? 0), 0) + cell.daily3.b[c]!);
   const p3 = softmax(p3raw);
   const level = rainLevel(score);
   const place = `${loc.province}${loc.city}${loc.district}`;
   const grid = `${cell.lat.toFixed(4)}°N ${cell.lng.toFixed(4)}°E`;
-  const detail = describeWeather(chart, { cls, score, rainProb, level, place });
-  const reading = `${detail.headline}。坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），${place}估有雨 ${rainProb}%。`;
+  const detail = describeWeather(chart, {
+    cls,
+    score,
+    rainProb,
+    level,
+    place,
+    climateBand: climate.band,
+    climateNote: climate.note,
+  });
+  const skill =
+    climate.skillOverBaseline != null
+      ? `技巧相对多数类 ${climate.skillOverBaseline >= 0 ? "+" : ""}${(climate.skillOverBaseline * 100).toFixed(1)} 点`
+      : "技巧未计";
+  const reading = `${detail.headline}。坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），按${climate.label}带门槛报「${cls}」，${place}估有雨 ${rainProb}%。`;
   return {
     cls,
     score,
@@ -193,8 +208,9 @@ export function forecastDistrictWeather(
     rainProb,
     ancient,
     reading,
-    sourceNote: `${place} · ${hit.how}独立模型 · 中心 ${grid} · ${pack.start}–${pack.end} · 训练至 ${pack.trainUntil} · 有雨检验 ${pct(cell.metrics.rainAccTest)} · 旬检验 ${pct(cell.metrics.xunAccTest)}。S=22×logit。NOAA CPC 0.5° 双线性插值到本区中心后单独拟合，不与邻区共享 w、b。`,
+    sourceNote: `${place} · ${hit.how}独立模型 · 中心 ${grid} · ${pack.start}–${pack.end} · 训练至 ${pack.trainUntil} · 有雨检验 ${pct(cell.metrics.rainAccTest)} · 旬检验 ${pct(cell.metrics.xunAccTest)} · 雨日率 ${pct(cell.rainRate)} · ${climate.label}带 · ${skill}。S=22×logit。报雨门槛分值 ${climate.rainThresholdScore}，报晴门槛 ${climate.sunThresholdScore}。NOAA CPC 0.5° 双线性插值到本区中心后单独拟合，不与邻区共享 w、b。`,
     detail,
+    climate,
   };
 }
 
