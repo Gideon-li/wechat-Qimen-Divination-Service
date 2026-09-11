@@ -1,5 +1,6 @@
 import { GATES, GODS_YANG, SCORE_SCALE, STARS } from "./constants";
 import { PILLAR_FEATURE_NAMES, extractPillarFeatures } from "./pillar-earth";
+import { SYMBOL_WXING_FEATURE_NAMES, extractSymbolWuxingFeatures } from "./wuxing-symbol";
 import type { QimenChart } from "./types";
 
 export { SCORE_SCALE };
@@ -16,6 +17,7 @@ export const SCORE_FEATURE_NAMES = [
   "年积日sin",
   "年积日cos",
   ...PILLAR_FEATURE_NAMES,
+  ...SYMBOL_WXING_FEATURE_NAMES,
 ] as const;
 
 export type ScoreVec = number[];
@@ -38,6 +40,9 @@ export function extractScoreFeatures(chart: QimenChart, doy: number): ScoreVec {
   x[b + 5] = Math.cos((2 * Math.PI * doy) / 365.25);
   const pillar = extractPillarFeatures(chart, kan);
   for (let i = 0; i < pillar.length; i++) x[b + 6 + i] = pillar[i]!;
+  const wx = extractSymbolWuxingFeatures(chart, kan);
+  const wxOff = b + 6 + pillar.length;
+  for (let i = 0; i < wx.length; i++) x[wxOff + i] = wx[i]!;
   return x;
 }
 
