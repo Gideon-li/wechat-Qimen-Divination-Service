@@ -5,16 +5,15 @@ import {
   GOD_ELEMENT,
   JI_GOD,
   JI_MEN,
-  JI_STAR,
   STAR_ELEMENT,
   STEM_ELEMENT,
-  XIONG_GOD,
   XIONG_MEN,
-  XIONG_STAR,
 } from "./constants";
 import type { GanzhiFlag, Palace, QimenChart } from "./types";
 
-export { XIONG_GOD, JI_STAR, XIONG_STAR };
+export const XIONG_GOD = new Set(["腾蛇", "白虎", "玄武"]);
+export const JI_STAR = new Set(["天辅", "天心", "天任", "天禽", "天冲"]);
+export const XIONG_STAR = new Set(["天蓬", "天芮", "天柱"]);
 
 export type SymbolKind = "神" | "门" | "星";
 export type Polarity = "吉" | "凶" | "中";
@@ -44,13 +43,6 @@ export function elementOf(kind: SymbolKind, name: string | null | undefined): st
   return STAR_ELEMENT[name] ?? "";
 }
 
-/**
- * 断法（用神宫的神/门/星 相对 干支五行）：
- * - 被生则旺。
- * - 吉神被生 → 吉；吉神被克 → 小吉，重克可转小凶。
- * - 凶神被生 → 明灾、小凶（灾能看见，气反而散一些）。
- * - 凶神被克 → 灾更隐蔽、更凶。
- */
 export function toneOf(polarity: Polarity, rel: "生我" | "克我" | "我生" | "我克" | "同我" | null): Tone {
   if (!rel || rel === "同我" || rel === "我生") return "平";
   if (polarity === "吉" && rel === "生我") return "吉";
@@ -153,9 +145,7 @@ export function symbolWuxingHits(chart: QimenChart, palace: Palace): SymbolHit[]
     for (const a of agents(chart, palace)) {
       if (!a.element || !a.glyph) continue;
       const rel = wuxingRelation(el, a.element);
-      if (!rel || rel === "同我") continue;
-      if (rel !== "生我" && rel !== "克我" && rel !== "我克" && rel !== "我生") continue;
-      if (rel === "我生") continue;
+      if (!rel || rel === "同我" || rel === "我生") continue;
       const tone = toneOf(pol, rel);
       const weight = weightOf(pol, rel, a.scale);
       if (!weight) continue;
@@ -193,7 +183,6 @@ export function wuxingPlainLines(chart: QimenChart, palace: Palace, limit = 6): 
     .map((h) => h.detail);
 }
 
-/** 天气/统一向量用的 12 维：神门星 × 吉被生/吉被克/凶被生/凶被克。只看日柱时柱。 */
 export const SYMBOL_WXING_FEATURE_NAMES = [
   "神_吉被生",
   "神_吉被克",
