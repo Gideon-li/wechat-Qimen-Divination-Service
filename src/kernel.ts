@@ -11,6 +11,7 @@ import { EVENTS } from "./engine/constants";
 import { extractSymbolPack } from "./engine/extract";
 import { forecastDistrictWeather, loadDistrictWeights, eventBasesForLocation } from "./engine/district-model";
 import { forecastWeather } from "./engine/weather-model";
+import { forecastGenericWeather, GENERIC_BASES } from "./engine/generic-model";
 import { regionForProvince } from "./engine/regions";
 import type { EventId, Gender, QimenChart } from "./engine/types";
 
@@ -39,6 +40,8 @@ export type QueryBody = {
   activity?: DirectionActivity;
   question?: string;
   history?: { role: "user" | "assistant"; content: string }[];
+  /** zh = China district models; en = generic pooled, no geography */
+  locale?: "zh" | "en";
 };
 
 export type Resolved = {
@@ -109,7 +112,7 @@ export function resolveQuery(body: QueryBody = {}): Resolved {
     minute: num(body.civil?.minute, now.minute),
   };
   const loc = resolveLocation(body);
-  if (body.trueSolar) {
+  if (body.trueSolar && body.locale !== "en") {
     const lng = locationLng(loc.provinceCode, loc.districtCode);
     civil = applyTrueSolar(civil, lng);
   }
@@ -123,9 +126,11 @@ export function resolveQuery(body: QueryBody = {}): Resolved {
     juOverride = getJuFromLots(num(body.lotsMonth, civil.month), ju);
   }
   const chart = buildChart(civil, juOverride);
-  const subjectKind: SubjectKind = body.subjectKind ?? "person";
+  const locale = body.locale === "en" ? "en" : "zh";
+  const subjectKind: SubjectKind = locale === "en" ? "person" : (body.subjectKind ?? "person");
   const personName = body.personName?.trim() ?? "";
-  const who = subjectName(subjectKind, { personName, ...loc });
+  const who =
+    locale === "en" ? personName || "querent" : subjectName(subjectKind, { personName, ...loc });
   const place = isPlaceSubject(subjectKind);
   const birthYearRaw = !place && body.birthYear ? Number(body.birthYear) : null;
   const birthYear = birthYearRaw && birthYearRaw >= 1920 && birthYearRaw <= 2030 ? birthYearRaw : null;
@@ -153,14 +158,17 @@ export function resolveQuery(body: QueryBody = {}): Resolved {
   };
 }
 
-export async function attachDistrictBases(r: Resolved): Promise<Resolved> {
+export async function attachDistrictBases(r: Resolved, locale: "zh" | "en" = "zh"): Promise<Resolved> {
+  if (locale === "en") {
+    return { ...r, opts: { ...r.opts, bases: GENERIC_BASES } };
+  }
   const pack = await loadDistrictWeights();
   const bases = eventBasesForLocation(pack, r.loc);
   return { ...r, opts: { ...r.opts, bases } };
 }
 
 export async function readyQuery(body: QueryBody = {}) {
-  return attachDistrictBases(resolveQuery(body));
+  return attachDistrictBases(resolveQuery(body), body.locale === "en" ? "en" : "zh");
 }
 
 function doyOf(c: CivilTime) {
@@ -245,7 +253,22 @@ export function packFortune(r: Resolved) {
   return buildFortunePack(r.civil, r.opts);
 }
 
-export async function packWeather(r: Resolved) {
+export async function packWeather(r: Resolved, locale: "zh" | "en" = "zh") {
+  if (locale === "en") {
+    const generic = forecastGenericWeather(r.chart, r.civil.month, doyOf(r.civil), "en");
+    return {
+      district: generic,
+      climateBand: generic,
+      sketch: generic.detail,
+      model: {
+        nDistricts: 0,
+        start: "generic",
+        end: "generic",
+        trainUntil: "pooled-12-bands",
+        method: "generic pooled (no geography)",
+      },
+    };
+  }
   const pack = await loadDistrictWeights();
   const district = forecastDistrictWeather(r.chart, doyOf(r.civil), r.loc, pack);
   const regionId = regionForProvince(r.loc.provinceCode);

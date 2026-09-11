@@ -87,7 +87,7 @@ export async function natal(body: QueryBody = {}) {
 /** 区县天气（本地权重） */
 export async function weather(body: QueryBody = {}) {
   const { r, base } = await withChart(body);
-  return { ...base, weather: await packWeather(r) };
+  return { ...base, weather: await packWeather(r, body.locale === "en" ? "en" : "zh") };
 }
 
 /** 三位数求局 */
@@ -107,7 +107,7 @@ export async function scan(body: QueryBody = {}) {
     directions: packDirections(r),
     fortune: packFortune(r),
     natal: packNatal(r).natal,
-    weather: await packWeather(r),
+    weather: await packWeather(r, body.locale === "en" ? "en" : "zh"),
   };
 }
 
@@ -148,6 +148,7 @@ export async function consultAsk(body: QueryBody = {}) {
     person: r.who,
     location: r.scope,
     subjectLine: subjectPrompt(r.subjectKind, r.who, r.scope),
+    locale: body.locale === "en" ? "en" : "zh",
     luck: {
       eventName: score.name,
       subject: r.who,
@@ -162,6 +163,7 @@ export async function consultAsk(body: QueryBody = {}) {
       fuYin: r.chart.meta.fuYin,
       fanYin: r.chart.meta.fanYin,
       patterns: score.patterns,
+      locale: body.locale === "en" ? "en" : "zh",
     },
   });
   if (!result.ok) throw new Error(result.error);

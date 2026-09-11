@@ -26,6 +26,8 @@
 
 事业 `career` 与学业 `study` 仍是两类事项，分开调用。
 
+`locale: "zh"`（默认）走中国区县细模型与真太阳时。`locale: "en"` 走通用 pooled 天气模型（十二气候带平均），不分地理位置，事项神门星信度用全国平均。
+
 ## 下载到本地
 
 ```bash
@@ -53,6 +55,7 @@ const r = await qimen.scan({
   gender: "male",
   location: { province: "浙江省", city: "温州市", district: "瓯海区" },
   eventId: "wealth",
+  locale: "zh", // "en" = generic pooled weather, no county geography
 });
 
 console.log(r.chart.ju.label, r.focus.name, r.focus.level);

@@ -184,7 +184,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
   }
 
   if (method === "POST" && p === "/v1/weather") {
-    return ok({ ...packChart(r), weather: await packWeather(r) });
+    return ok({ ...packChart(r), weather: await packWeather(r, body.locale === "en" ? "en" : "zh") });
   }
 
   if (method === "POST" && p === "/v1/fortune") {
@@ -197,7 +197,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
 
   if (method === "POST" && (p === "/v1/scan" || p === "/v1/divination")) {
     const events = packEvents(r);
-    const weather = await packWeather(r).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+    const weather = await packWeather(r, body.locale === "en" ? "en" : "zh").catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
     return ok({
       ...packChart(r),
       events,
@@ -241,6 +241,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
       person: r.who,
       location: r.scope,
       subjectLine: subjectPrompt(r.subjectKind, r.who, r.scope),
+      locale: body.locale === "en" ? "en" : "zh",
       luck: {
         eventName: score.name,
         subject: r.who,
@@ -255,6 +256,7 @@ export async function dispatch(method: string, path: string, body: QueryBody & R
         fuYin: r.chart.meta.fuYin,
         fanYin: r.chart.meta.fanYin,
         patterns: score.patterns,
+        locale: body.locale === "en" ? "en" : "zh",
       },
     });
     if (!result.ok) return { ok: false as const, error: result.error, status: 502 };

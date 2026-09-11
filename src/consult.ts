@@ -34,6 +34,7 @@ export type ChatInput = {
   location?: string;
   subjectLine?: string;
   luck?: LuckPlainInput;
+  locale?: "zh" | "en";
 };
 
 const SYSTEM_COMPOSE = `你是奇门遁甲「联想断事」助手，不是算命实录。
@@ -45,6 +46,15 @@ const SYSTEM_COMPOSE = `你是奇门遁甲「联想断事」助手，不是算�
 5. 语气克制，像老师讲解，不要鸡汤，不要保证应验。
 6. 只输出 JSON，字段：scene（一段总述），time，place，people，content，expansion（2-3条字符串），caution（一句提醒）。
 7. JSON 字符串里禁止出现井号、星号、反引号或任何 Markdown。`;
+
+const SYSTEM_CHAT_EN = `You are a Qimen Dunjia chart tutor. Use only the palace summary and symbol notes given.
+- Stay on the subject. If the subject is a place, treat Zhi Fu as that place, not a private person.
+- Write two sections only, labelled "1." and "2.":
+  1. Useful god: which gate, star and god, and what they mean.
+  2. A concrete possible event: time, place, people, matter.
+- Do not write a third section. The system will add "3. Hint and advice".
+- Do not exaggerate. No markdown.
+- English. For study, not a verdict.`;
 
 const SYSTEM_CHAT = `你是奇门遁甲盘面咨询助手。依据用户给出的九宫摘要和象征库词条作答。
 - 严格围绕预测对象。对象若是区县、城市、省份、国家，把值符当作该地，写该地的事，不要当成个人算命。
@@ -130,11 +140,19 @@ export async function consultChart(data: ChatInput) {
   ]
     .filter(Boolean)
     .join("\n");
+  const locl = data.locale === "en" ? "en" : "zh";
+  const luck = data.luck ? { ...data.luck, locale: locl as "zh" | "en" } : data.luck;
   const r = await llmChat(
     [
-      { role: "system", content: SYSTEM_CHAT },
+      { role: "system", content: locl === "en" ? SYSTEM_CHAT_EN : SYSTEM_CHAT },
       { role: "user", content: header },
-      { role: "assistant", content: "已记住当前盘面、预测对象与象征库。请提问。只写一、二两段，用纯文本。" },
+      {
+        role: "assistant",
+        content:
+          locl === "en"
+            ? "Chart remembered. Ask. Write sections 1 and 2 only, plain text."
+            : "已记住当前盘面、预测对象与象征库。请提问。只写一、二两段，用纯文本。",
+      },
       ...history,
       { role: "user", content: question },
     ],
@@ -142,7 +160,7 @@ export async function consultChart(data: ChatInput) {
   );
   if (!r.ok) return { ok: false as const, error: r.error };
   const body = stripModelMarkup(r.text).slice(0, 2200);
-  const advice = data.luck ? luckPlainAdvice(data.luck) : "";
-  const text = advice ? withLuckAdvice(body, advice) : body;
+  const advice = luck ? luckPlainAdvice(luck) : "";
+  const text = advice ? withLuckAdvice(body, advice, locl) : body;
   return { ok: true as const, text: stripModelMarkup(text).slice(0, 2800) };
 }

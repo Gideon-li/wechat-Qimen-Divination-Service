@@ -76,9 +76,90 @@ export type LuckPlainInput = {
   fuYin?: boolean;
   fanYin?: boolean;
   patterns?: string[];
+  wuxing?: string[];
+  locale?: "zh" | "en";
+};
+
+const GATE_PLAIN_EN: Record<string, { mean: string; yi: string; ji: string }> = {
+  开门: { mean: "Open gate: the road is open", yi: "go out, meet people, file papers", ji: "sneak, lock the wording" },
+  休门: { mean: "Rest gate: pause and gather", yi: "seek money, rest, invite people", ji: "force a fight" },
+  生门: { mean: "Life gate: growth", yi: "trade, settle, start work", ji: "funerals, hard force" },
+  伤门: { mean: "Injury gate: knocks and waste", yi: "collect old debts", ji: "open shop, travel, wed" },
+  杜门: { mean: "Block gate: closed, hidden", yi: "keep a low profile", ji: "seek fame, travel" },
+  景门: { mean: "View gate: papers, exams, light", yi: "submit writing, sit exams", ji: "risk the household on a trip" },
+  死门: { mean: "Death gate: stop and close", yi: "finish, wind up", ji: "push new starts or weddings" },
+  惊门: { mean: "Alarm gate: shock and suits", yi: "clear a dispute in words", ji: "seek quiet travel or office" },
+};
+const GOD_PLAIN_EN: Record<string, string> = {
+  值符: "Zhi Fu is the one who can decide",
+  腾蛇: "Teng She is false alarm and looping worry",
+  太阴: "Tai Yin prefers quiet talks, not a show",
+  六合: "Liu He gets things done through people",
+  白虎: "White Tiger is force, injury, clash",
+  玄武: "Xuan Wu is dark, loss, drain",
+  九地: "Nine Earth: hold, slow, grow in place",
+  九天: "Nine Heaven: go public and upward",
+};
+const STAR_PLAIN_EN: Record<string, string> = {
+  天蓬: "Tian Peng: messy, costly process",
+  天芮: "Tian Rui: slow, illness or petty people",
+  天冲: "Tian Chong: fast — cut, do not drag",
+  天辅: "Tian Fu: papers, help, a method",
+  天禽: "Tian Qin: the hub is still in your hand",
+  天心: "Tian Xin: a plan, a cure, a mediation",
+  天柱: "Tian Zhu: breakage, talk, hard to hold",
+  天任: "Tian Ren: steady, can bear weight",
+  天英: "Tian Ying: bright surface, heat underneath",
+};
+const LEVEL_PLAIN_EN: Record<string, string> = {
+  大吉: "Great luck: the current runs with you. You still have to row.",
+  吉: "Luck: it can work on the proper road.",
+  小吉: "Mild luck: not a lock, but you can move. Leave slack in the wording.",
+  平: "Even: it may or may not. Choose a lucky gate and then act.",
+  小凶: "Mild harm: friction, talk, loops. Hold rather than charge.",
+  凶: "Harm: resistance is clear. Guard, delay, finish what you have.",
+  大凶: "Great harm: stop the large move. Fewer signatures, fewer long trips.",
 };
 
 export function luckPlainAdvice(input: LuckPlainInput): string {
+  if (input.locale === "en") {
+    const who = input.subject?.trim()
+      ? `On “${input.subject}” asking “${input.eventName}”`
+      : `Asking “${input.eventName}”`;
+    const sign = input.score > 0 ? `+${input.score}` : String(input.score);
+    const pct = input.probability != null ? `, favourable odds about ${input.probability}%` : "";
+    const head = LEVEL_PLAIN_EN[input.level] ?? `Verdict ${input.level} (${sign}).`;
+    const first = `${who}. Verdict ${input.level} (${sign}${pct}). ${head}`;
+    const bits: string[] = [];
+    if (input.gate && GATE_PLAIN_EN[input.gate]) {
+      const g = GATE_PLAIN_EN[input.gate];
+      bits.push(`${g.mean}: do ${g.yi}; avoid ${g.ji}.`);
+    }
+    if (input.star && STAR_PLAIN_EN[input.star]) bits.push(`${STAR_PLAIN_EN[input.star]}.`);
+    if (input.god && GOD_PLAIN_EN[input.god]) bits.push(`${GOD_PLAIN_EN[input.god]}.`);
+    const palace = [input.bagua, input.god, input.star, input.gate].filter(Boolean).join(", ");
+    const second = palace
+      ? `Useful palace shows ${palace}. ${bits.join(" ")} Together these images judge this chart.`
+      : bits.join(" ");
+    const extra: string[] = [];
+    for (const line of input.wuxing ?? []) extra.push(line);
+    if (input.kong) extra.push("Useful god is void: fine names, empty landings. Leave a tail on contracts.");
+    if (input.fuYin) extra.push("Fu yin: things loop in place.");
+    if (input.fanYin) extra.push("Fan yin: the opposite party or reverse terms appear.");
+    const yi = input.gate && GATE_PLAIN_EN[input.gate] ? GATE_PLAIN_EN[input.gate].yi : "pick a lucky gate and do the proper work";
+    const ji = input.gate && GATE_PLAIN_EN[input.gate] ? GATE_PLAIN_EN[input.gate].ji : "speak as if it is already done";
+    const lucky = input.level.includes("吉");
+    const bad = input.level.includes("凶");
+    const tip = lucky
+      ? `Advice: ${yi}. Still leave slack. Avoid ${ji}.`
+      : bad
+        ? `Advice: hold, do not fight. Avoid ${ji}. If you must move, do only the one thing in front of you.`
+        : `Advice: you may wait or move. If you move, ${yi}.`;
+    return [first, second, extra.join(" "), tip, "Plain reading of the chart for study, not a verdict."]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   const who = input.subject?.trim() ? `就「${input.subject}」问「${input.eventName}」` : `问「${input.eventName}」`;
   const sign = input.score > 0 ? `+${input.score}` : String(input.score);
   const pct = input.probability != null ? `，顺利倾向大约 ${input.probability}%` : "";
@@ -120,8 +201,8 @@ export function luckPlainAdvice(input: LuckPlainInput): string {
     .join("\n");
 }
 
-/** 去掉模型自己写的第三段，改挂盘面算出的白话吉凶。 */
-export function withLuckAdvice(text: string, advice: string): string {
-  const body = text.replace(/\n*三[、.．:].*$/s, "").trim();
-  return `${body}\n\n三、吉凶提示与建议\n${advice}`.trim();
+export function withLuckAdvice(text: string, advice: string, locale: "zh" | "en" = "zh"): string {
+  const body = text.replace(/\n*三[、.．:].*$/s, "").replace(/\n*3[.)].*$/s, "").trim();
+  const head = locale === "en" ? "3. Hint and advice" : "三、吉凶提示与建议";
+  return `${body}\n\n${head}\n${advice}`.trim();
 }

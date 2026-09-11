@@ -66,7 +66,8 @@ Authorization: Bearer <serviceToken>
   "eventId": "wealth",
   "activity": "commerce",
   "question": "本周回款会不会到",
-  "history": []
+  "history": [],
+  "locale": "zh"
 }
 ```
 
@@ -87,6 +88,7 @@ Authorization: Bearer <serviceToken>
 | activity | 见目录 | 方位用事。默认 `commerce`。 |
 | question | 字符串 | 智断提问。 |
 | history | 数组 | 追问上下文，`{role, content}`，最多用最近 8 轮。 |
+| locale | `zh` \| `en` | 默认 `zh`：中国区县模型。`en`：通用 pooled 模型，不分地理位置，事项用全国平均神门星信度。 |
 
 `subjectKind`：
 

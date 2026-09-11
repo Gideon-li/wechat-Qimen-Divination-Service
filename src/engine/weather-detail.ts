@@ -1,4 +1,5 @@
 import type { Palace, PalaceId, QimenChart } from "./types";
+import { BAGUA_EN, term, WX_GATE_EN, WX_GOD_EN, WX_STAR_EN } from "./names-en";
 
 export type WeatherAspectKey = "rain" | "sun" | "wind" | "thunder" | "fog" | "heat" | "cold" | "change";
 
@@ -294,9 +295,52 @@ function kanWeather(kan: Palace): string {
   return bits.length ? bits.join("、") : "中平";
 }
 
+function localizeSketch(sk: WeatherSketch, locale: "zh" | "en"): WeatherSketch {
+  if (locale !== "en") return sk;
+  const palace = (s: string) => s.replace("宫", " palace").replace(/坎|坤|震|巽|中|乾|兑|艮|离/g, (m) => BAGUA_EN[m] ?? m);
+  return {
+    ...sk,
+    headline: sk.headline.replace(/晴/g, "clear").replace(/阴/g, "cloudy").replace(/雨/g, "rain").replace("坎宫", "Kan"),
+    kan: {
+      ...sk.kan,
+      bagua: term(sk.kan.bagua, "en"),
+      direction: term(sk.kan.direction, "en"),
+      god: term(sk.kan.god, "en"),
+      star: term(sk.kan.star, "en"),
+      gate: term(sk.kan.gate, "en"),
+    },
+    from: sk.from.map((f) => ({
+      ...f,
+      label: { rain: "Rain", wind: "Wind", thunder: "Thunder", sun: "Sun", fog: "Fog" }[f.key] ?? f.label,
+      palace: palace(f.palace),
+      direction: term(f.direction, "en"),
+      name: term(f.name, "en"),
+      text: WX_GOD_EN[f.name] ?? WX_STAR_EN[f.name] ?? WX_GATE_EN[f.name] ?? f.text,
+    })),
+    aspects: sk.aspects.map((a) => ({
+      ...a,
+      label: { rain: "Rain", sun: "Sun", wind: "Wind", thunder: "Thunder", fog: "Fog", heat: "Heat", cold: "Cold", change: "Change" }[a.key],
+      level: (term(a.level, "en") as WeatherAspect["level"]),
+    })),
+    elements: sk.elements.map((e) => ({
+      ...e,
+      name: term(e.name, "en"),
+      palace: palace(e.palace),
+      direction: term(e.direction, "en"),
+      text: WX_GOD_EN[e.name] ?? WX_STAR_EN[e.name] ?? WX_GATE_EN[e.name] ?? e.text,
+    })),
+    narrative: [`Kan holds ${term(sk.kan.god, "en")}, ${term(sk.kan.star, "en")}, ${term(sk.kan.gate, "en")}.`, sk.kan.kong ? "Kan is void, so rain may fail to land." : ""].filter(Boolean).join(" "),
+    advice: sk.advice.includes("雨")
+      ? "Carry rain gear if going far. This is a classical sketch, not a meteorological warning."
+      : sk.advice.includes("晴")
+        ? "Expect more sun than rain. Still a study sketch, not a forecast office product."
+        : "Mixed or cloudy. Read Kan first. For study, not a civil warning.",
+  };
+}
+
 export function describeWeather(
   chart: QimenChart,
-  ctx: { cls: string; score: number; rainProb: number; level: string; place?: string; month?: number },
+  ctx: { cls: string; score: number; rainProb: number; level: string; place?: string; month?: number; locale?: "zh" | "en"; climateBand?: string; climateNote?: string },
 ): WeatherSketch {
   const month = ctx.month ?? chart.beijing.month;
   const kan = chart.palaces[1];
@@ -555,7 +599,7 @@ export function describeWeather(
     ordered.push(el);
   }
 
-  return {
+  const sketch: WeatherSketch = {
     headline,
     sky: kinds.sun,
     kan: {
@@ -575,4 +619,5 @@ export function describeWeather(
     narrative: `${p1}\n${p2}\n${p3}`,
     advice,
   };
+  return localizeSketch(sketch, ctx.locale ?? "zh");
 }
